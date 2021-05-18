@@ -6,7 +6,7 @@
   require_once('connectvars.php');
   require_once('navmenu.php');
 
-  // Make sure the user is logged in before going any further.
+  // Убеждаемся, что пользователь залогинен.
   if (!isset($_SESSION['user_id'])) {
     echo '<p class="login">Пожалуйста, <a href="login.php">войдите, </a>чтобы получить доступ к этой странице.</p>';
     exit();
@@ -15,23 +15,24 @@
     echo('<p class="login">Вы вошли как ' . $_SESSION['login'] . '. <a href="logout.php">Выйти</a>.</p>');
   }
 
-  // Connect to the database
 StartDB();
 
   if (isset($_POST['submit'])) {
-    // Grab the profile data from the POST
+    // Получаем данные из POST
     $login = mysqli_real_escape_string($dbc, trim($_POST['login']));
     $username = mysqli_real_escape_string($dbc, trim($_POST['username']));
     $usersurname = mysqli_real_escape_string($dbc, trim($_POST['usersurname']));
     $user_email = mysqli_real_escape_string($dbc, trim($_POST['user_email']));
+    $user_phone = mysqli_real_escape_string($dbc, trim($_POST['user_phone']));
     $old_password = mysqli_real_escape_string($dbc, trim($_POST['old_password']));
     $new_password1 = mysqli_real_escape_string($dbc, trim($_POST['new_password1']));
     $new_password2 = mysqli_real_escape_string($dbc, trim($_POST['new_password2']));
     $old_picture = mysqli_real_escape_string($dbc, trim($_POST['old_picture']));
     $error = false;
     $new_picture = mysqli_real_escape_string($dbc, trim($_FILES['new_picture']['name']));
+    $phone_maket = '/^\+[1-9]\d{3}[-\s]\d[-\s]\d{3}[-\s]\d{3}$/'; // +7911-1-111-111
         
-    // Validate and move the uploaded picture file, if necessary
+    // Проверяем новую картинку
     if (!empty($new_picture)) {
 
 	list($new_picture_width, $new_picture_height) = getimagesize($_FILES['new_picture']['tmp_name']);
@@ -41,7 +42,8 @@ StartDB();
       if ((($new_picture_type == 'image/gif') || ($new_picture_type == 'image/jpeg') || ($new_picture_type == 'image/pjpeg') ||
         ($new_picture_type == 'image/png')) && ($new_picture_size > 0) && ($new_picture_size <= HR_MAXFILESIZE) &&
         ($new_picture_width <= HR_MAXIMGWIDTH) && ($new_picture_height <= HR_MAXIMGHEIGHT)) {
-        if ($_FILES['new_picture']['error'] == 0) {          // Move the file to the target upload folder
+        if ($_FILES['new_picture']['error'] == 0) {
+          // Move the file to the target upload folder
           $target = HR_UPLOADPATH . basename($new_picture);
           if (move_uploaded_file($_FILES['new_picture']['tmp_name'], $target)) {
             // The new picture file move was successful, now make sure any old picture is deleted
@@ -50,37 +52,46 @@ StartDB();
             }
           }
           else {
-            // The new picture file move failed, so delete the temporary file and set the error flag
+            // Картинка не прошла загрузку, удаляем файл и ставим флаг ошибки
             @unlink($_FILES['new_picture']['tmp_name']);
             $error = true;
-            echo '<p class="error">Sorry, there was a problem uploading your picture.</p>';
+            echo '<p class="error">С загрузкой фото проблемы...</p>';
           }
-        }      }      else {
-        // The new picture file is not valid, so delete the temporary file and set the error flag
+        }
+      }
+      else {
+        // Картинка не прошла проверку на тип файла, удаляем файл и ставим флаг ошибки
         @unlink($_FILES['new_picture']['tmp_name']);
-        $error = true;        echo '<p class="error">Your picture must be a GIF, JPEG, or PNG image file no greater than ' . (HR_MAXFILESIZE / 1024) .
-          ' KB and ' . HR_MAXIMGWIDTH . 'x' . HR_MAXIMGHEIGHT . ' pixels in size.</p>';      }
+        $error = true;
+        echo '<p class="error">Фото должно быть GIF, JPEG, или PNG не больше ' . (HR_MAXFILESIZE / 1024) .
+          ' KB и ' . HR_MAXIMGWIDTH . 'x' . HR_MAXIMGHEIGHT . ' пикселей.</p>';
+      }
+    } // конец проверки новой картинки
+
+    if (!preg_match($phone_maket, $user_phone)) { // номер телефона не совпадает
+      echo '<p class="error">Вы ввели неправильный номер телефона</p>';
+      $error = true;
     }
 
-    // Update the profile data in the database
+    // Обновляем данные профиля
     if (!$error) {
       if (!empty($login) && !empty($old_password) && !empty($new_password1) && !empty($new_password2) && ($new_password1 == $new_password2)) {
-        // Only set the picture column if there is a new picture
+        // Если есть новая картинка
         if (!empty($new_picture)) {
-          $query = "UPDATE users SET login = '$login', username = '$username', usersurname = '$usersurname', user_email = '$user_email'," .
+          $query = "UPDATE users SET login = '$login', username = '$username', usersurname = '$usersurname', user_email = '$user_email', user_phone = '$user_phone'," .
             " password = SHA('$new_password1'), user_avatar = '$new_picture' WHERE user_id = '" . $_SESSION['user_id'] . "' AND password = SHA('$old_password')";
 
         }
         else {
-          $query = "UPDATE users SET login = '$login', username = '$username', usersurname = '$usersurname', user_email = '$user_email'," .
+          $query = "UPDATE users SET login = '$login', username = '$username', usersurname = '$usersurname', user_email = '$user_email', user_phone = '$user_phone'," .
             " password = SHA('$new_password1') WHERE user_id = '" . $_SESSION['user_id'] . "' AND password = SHA('$old_password')";
         }
        
         mysqli_query($dbc, $query);
 
-        // Confirm success with the user
+        // Подтверждение внесения данных
         echo '<p>Информация о профиле обновлена: </p>';
-		$query = "SELECT login, username, usersurname, user_email, user_avatar FROM users WHERE user_id = '" . $_SESSION['user_id'] . "'";
+		$query = "SELECT login, username, usersurname, user_email, user_phone, user_avatar FROM users WHERE user_id = '" . $_SESSION['user_id'] . "'";
 		$data = mysqli_query($dbc, $query);
 		$row = mysqli_fetch_array($data);
 
@@ -89,10 +100,11 @@ StartDB();
 		  echo 'Имя: ' . $row['username'] . '<br>';
 		  echo 'Фамилия: ' . $row['usersurname'] . '<br>';
 		  echo 'E-mail: ' . $row['user_email'] . '<br>';
+      echo 'Телефон: ' . $row['user_phone'] . '<br>';
 		  echo '<img class="cover circle" src="' . HR_UPLOADPATH . $row['user_avatar'] . '" alt="avatar" />';
 		}
 		else {
-		  echo '<p class="error">There was a problem accessing item profile.</p>';
+		  echo '<p class="error">Ошибка доступа к Вашему профилю.</p>';
 		}
 
         echo '<p>Хотите вернуться <a href="index.php">на главную страницу</a>?</p>';
@@ -101,13 +113,13 @@ StartDB();
         exit();
       }
       else {
-        echo '<p class="error">You must enter all of the profile data (the picture is optional).</p>';
+        echo '<p class="error">Нам нужны все Ваши данные! (можно без фото).</p>';
       }
     }
-  } // End of check for form submission
+  } // Конец проверки submit
   else {
-    // Grab the profile data from the database
-    $query = "SELECT login, username, usersurname, user_email, user_avatar FROM users WHERE user_id = '" . $_SESSION['user_id'] . "'";
+    // Загружаем данные из БД
+    $query = "SELECT login, username, usersurname, user_email, user_phone, user_avatar FROM users WHERE user_id = '" . $_SESSION['user_id'] . "'";
     $data = mysqli_query($dbc, $query);
     $row = mysqli_fetch_array($data);
 
@@ -116,6 +128,7 @@ StartDB();
       $username = $row['username'];
       $usersurname = $row['usersurname'];
       $user_email = $row['user_email'];
+      $user_phone = $row['user_phone'];
       $old_picture = $row['user_avatar'];
     }
     else {
@@ -138,7 +151,8 @@ StartDB();
       <input type="text" id="usersurname" name="usersurname" value="<?php if (!empty($usersurname)) echo $usersurname; ?>" /><br />
       <label for="user_email">E-mail:</label>
       <input type="email" id="user_email" name="user_email" value="<?php if (!empty($user_email)) echo $user_email; ?>" /><br />
-
+      <label for="user_phone">Телефон вида +7ХХХ-Х-ХХХ-ХХХ:</label>
+      <input type="user_phone" id="user_phone" name="user_phone" value="<?php if (!empty($user_phone)) echo $user_phone; ?>" /><br />
       
       <label for="old_password">Старый пароль:</label>
       <input type="password" id="old_password" name="old_password" /><br />

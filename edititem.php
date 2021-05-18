@@ -40,11 +40,14 @@ StartDB();
             $error = true;
             echo '<p class="error">Sorry, there was a problem uploading your picture.</p>';
           }
-        }      else {
+        }
+      else {
         // The new picture file is not valid, so delete the temporary file and set the error flag
         @unlink($_FILES['item_pic']['tmp_name']);
-        $error = true;        echo '<p class="error">Your picture must be a GIF, JPEG, or PNG image file no greater than ' . (HR_MAXFILESIZE / 1024) .
-          ' KB and ' . HR_MAXIMGWIDTH . 'x' . HR_MAXIMGHEIGHT . ' pixels in size.</p>';      }
+        $error = true;
+        echo '<p class="error">Your picture must be a GIF, JPEG, or PNG image file no greater than ' . (HR_MAXFILESIZE / 1024) .
+          ' KB and ' . HR_MAXIMGWIDTH . 'x' . HR_MAXIMGHEIGHT . ' pixels in size.</p>';
+      }
     
 
     // Update the profile data in the database
