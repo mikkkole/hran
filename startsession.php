@@ -8,4 +8,3 @@
       $_SESSION['login'] = $_COOKIE['login'];
     }
   }
-?>

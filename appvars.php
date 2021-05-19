@@ -5,7 +5,9 @@
   define('HR_MAXIMGDIMENTION', 500);        // 500 pixels
   define('HR_MAXIMGWIDTH', 500);        // 500 pixels
   define('HR_MAXIMGHEIGHT', 500);        // 500 pixels
-
+  define('HR_CAPTCHA_NUMCHARS', 6);        // 6 символов для капчи
+  define('HR_CAPTCHA_WIDTH', 100);        // 100 pixels
+  define('HR_CAPTCHA_HEIGHT', 25);        // 25 pixels
 
 function StartDB()  //функция соединения с базой данных
 {

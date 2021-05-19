@@ -24,13 +24,14 @@ StartDB();
     $usersurname = mysqli_real_escape_string($dbc, trim($_POST['usersurname']));
     $user_email = mysqli_real_escape_string($dbc, trim($_POST['user_email']));
     $user_phone = mysqli_real_escape_string($dbc, trim($_POST['user_phone']));
+    $user_phone_for_db = preg_replace('/[\+\(\)\-\.\s]/', '', $user_phone);
     $old_password = mysqli_real_escape_string($dbc, trim($_POST['old_password']));
     $new_password1 = mysqli_real_escape_string($dbc, trim($_POST['new_password1']));
     $new_password2 = mysqli_real_escape_string($dbc, trim($_POST['new_password2']));
     $old_picture = mysqli_real_escape_string($dbc, trim($_POST['old_picture']));
     $error = false;
     $new_picture = mysqli_real_escape_string($dbc, trim($_FILES['new_picture']['name']));
-    $phone_maket = '/^\+[1-9]\d{3}[-\s]\d[-\s]\d{3}[-\s]\d{3}$/'; // +7911-1-111-111
+    $phone_maket = '/^\\d{11}$/'; // 79111111111
         
     // Проверяем новую картинку
     if (!empty($new_picture)) {
@@ -68,9 +69,23 @@ StartDB();
       }
     } // конец проверки новой картинки
 
-    if (!preg_match($phone_maket, $user_phone)) { // номер телефона не совпадает
+    // проверка номер телефона
+    if (!preg_match($phone_maket, $user_phone_for_db)) { // номер телефона не совпадает
       echo '<p class="error">Вы ввели неправильный номер телефона</p>';
       $error = true;
+    }
+
+    // проверка e-mail
+    if (!preg_match('/^[a-zA-Z0-9][a-zA-Z0-9\._\-&!?=#]*@/', $user_email)) {
+      echo '<p class="error">У Вас неверный адрес электронной почты.</p>';
+      $error = true;
+    }
+    else {
+      $domain = preg_replace('/^[a-zA-Z0-9][a-zA-Z0-9\._\-&!?=#]*@/', '', $user_email);
+      if (!checkdnsrr($domain)) {
+        echo '<p class="error">У Вашей электронной почты несуществующий домен.</p>';
+        $error = true;
+      }
     }
 
     // Обновляем данные профиля
@@ -78,12 +93,12 @@ StartDB();
       if (!empty($login) && !empty($old_password) && !empty($new_password1) && !empty($new_password2) && ($new_password1 == $new_password2)) {
         // Если есть новая картинка
         if (!empty($new_picture)) {
-          $query = "UPDATE users SET login = '$login', username = '$username', usersurname = '$usersurname', user_email = '$user_email', user_phone = '$user_phone'," .
+          $query = "UPDATE users SET login = '$login', username = '$username', usersurname = '$usersurname', user_email = '$user_email', user_phone = '$user_phone_for_db'," .
             " password = SHA('$new_password1'), user_avatar = '$new_picture' WHERE user_id = '" . $_SESSION['user_id'] . "' AND password = SHA('$old_password')";
 
         }
         else {
-          $query = "UPDATE users SET login = '$login', username = '$username', usersurname = '$usersurname', user_email = '$user_email', user_phone = '$user_phone'," .
+          $query = "UPDATE users SET login = '$login', username = '$username', usersurname = '$usersurname', user_email = '$user_email', user_phone = '$user_phone_for_db'," .
             " password = SHA('$new_password1') WHERE user_id = '" . $_SESSION['user_id'] . "' AND password = SHA('$old_password')";
         }
        
@@ -100,7 +115,7 @@ StartDB();
 		  echo 'Имя: ' . $row['username'] . '<br>';
 		  echo 'Фамилия: ' . $row['usersurname'] . '<br>';
 		  echo 'E-mail: ' . $row['user_email'] . '<br>';
-      echo 'Телефон: ' . $row['user_phone'] . '<br>';
+      echo 'Телефон: +' . $row['user_phone'] . '<br>';
 		  echo '<img class="cover circle" src="' . HR_UPLOADPATH . $row['user_avatar'] . '" alt="avatar" />';
 		}
 		else {
@@ -128,11 +143,11 @@ StartDB();
       $username = $row['username'];
       $usersurname = $row['usersurname'];
       $user_email = $row['user_email'];
-      $user_phone = $row['user_phone'];
+      $user_phone_for_db = $row['user_phone'];
       $old_picture = $row['user_avatar'];
     }
     else {
-      echo '<p class="error">There was a problem accessing your profile.</p>';
+      echo '<p class="error">Ошибка доступа к Вашему профилю.</p>';
     }
   }
 
@@ -151,8 +166,8 @@ StartDB();
       <input type="text" id="usersurname" name="usersurname" value="<?php if (!empty($usersurname)) echo $usersurname; ?>" /><br />
       <label for="user_email">E-mail:</label>
       <input type="email" id="user_email" name="user_email" value="<?php if (!empty($user_email)) echo $user_email; ?>" /><br />
-      <label for="user_phone">Телефон вида +7ХХХ-Х-ХХХ-ХХХ:</label>
-      <input type="user_phone" id="user_phone" name="user_phone" value="<?php if (!empty($user_phone)) echo $user_phone; ?>" /><br />
+      <label for="user_phone">Телефон:</label>
+      <input type="user_phone" id="user_phone" name="user_phone" value="<?php if (!empty($user_phone_for_db)) echo '+' . $user_phone_for_db; ?>" /><br />
       
       <label for="old_password">Старый пароль:</label>
       <input type="password" id="old_password" name="old_password" /><br />
@@ -173,4 +188,3 @@ StartDB();
   
 <?php
 require_once('footer.php');
-?>
